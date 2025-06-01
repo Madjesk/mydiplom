@@ -1,0 +1,1013 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Mail Receiver</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        .toast-container {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+        }
+        .status-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        .status-icon.orange {
+            color: orange;
+        }
+        .status-icon.green {
+            color: green;
+        }
+        #historyTable th,
+        #historyTable td {
+            text-align: center;
+            vertical-align: middle;
+        }
+        .download-btn {
+            padding: 0.5rem 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .approve-checkbox {
+            margin-right: 1.5rem;
+        }
+        #pendingUsersSection tr td {
+            border-bottom: 1px solid #dee2e6;
+            padding: 0.75rem;
+        }
+
+        #pendingUsersSection table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        #pendingUsersSection tr {
+            height: 50px !important;
+        }
+
+        .approve-checkbox-container {
+            height: 60px !important;
+            min-height: 60px;
+            padding-bottom: 20px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+        #pendingUsersSection th,
+        #pendingUsersSection td {
+            text-align: center;
+            vertical-align: middle;
+            padding: 12px 8px;
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+
+        .approve-checkbox {
+            transform: scale(1.3);
+            margin: 0;
+        }
+
+        .checkbox-cell {
+            position: relative;
+            padding-bottom: 18px !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="toast-container p-3" id="toastPlacement"></div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-3 bg-light vh-100 pt-4" style="min-height:100vh;">
+            <h4 class="text-center">Меню</h4>
+            <hr>
+            <button type="button"
+                    class="btn btn-primary w-100 mb-3"
+                    id="toggleGroups">
+                Группы для рассылок
+            </button>
+            <button type="button" class="btn btn-primary w-100 mb-3" data-bs-toggle="modal" data-bs-target="#sendMailModal">
+                Запустить рассылку
+            </button>
+            <button type="button" class="btn btn-primary w-100 mb-3" id="toggleMailing">
+                История рассылок
+            </button>
+            <button type="button" class="btn btn-primary w-100 mb-3" id="togglePendingUsers">
+                Управление сотрудниками
+            </button>
+            <button type="button" class="btn btn-primary w-100 mb-3" data-bs-toggle="modal" data-bs-target="#mailCredentialsModal">
+                Настроить почту
+            </button>
+            <button type="button"
+                    class="btn btn-primary w-100 mb-3"
+                    id="toggleBizproc">
+                Бизнес-процессы
+            </button>
+            <button type="button"
+                    class="btn btn-primary w-100 mb-3"
+                    id="toggleActionLog">
+                Журнал действий
+            </button>
+
+
+        </div>
+
+        <div class="col-9">
+            <div class="p-4">
+                <div id="bizprocSection" style="display:none;">
+                    <h2>Бизнес-процессы</h2>
+                    <hr>
+
+                    <button class="btn btn-success mb-3" id="addBizprocBtn">
+                        ➕ Добавить бизнес-процесс
+                    </button>
+
+                    <table class="table table-striped align-middle" id="bizprocTable">
+                        <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Описание</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <hr>
+
+                    <button class="btn btn-secondary mb-3" id="addStageBtn">
+                        ➕ Добавить этапы бизнес-процесса
+                    </button>
+
+                    <table class="table table-bordered align-middle" id="stageTable">
+                        <thead>
+                        <tr>
+                            <th>Название этапа</th>
+                            <th>Группа рассылки</th>
+                            <th>Текст письма</th>
+                            <th>Приоритет</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="groupsSection" style="display:none;">
+                    <h2>Группы для рассылок</h2><hr>
+
+                    <button class="btn btn-success mb-3"
+                            data-bs-toggle="modal"
+                            data-bs-target="#createGroupModal">
+                        ➕ Создать группу
+                    </button>
+
+                    <table class="table" id="groupsTable">
+                        <thead>
+                        <tr>
+                            <th>Название группы</th>
+                            <th>Количество контактов</th>
+                            <th class="text-center"></th>
+
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="mailHistorySection" style="display: none;">
+                    <h2>История рассылок</h2>
+                    <hr>
+
+                    <table class="table" id="historyTable">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Тема</th>
+                            <th>Группа</th>
+                            <th>Дата отправки</th>
+                            <th>Доставлено / Всего</th>
+                            <th>Подробная статистика</th>
+                        </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="actionLogSection" style="display:none;">
+                    <h2>Журнал действий</h2><hr>
+
+                    <button class="btn btn-success mb-3" id="addActionBtn">
+                        ➕ Создать
+                    </button>
+
+                    <table class="table table-striped" id="actionLogTable">
+                        <thead>
+                        <tr>
+                            <th>Бизнес-процесс</th>
+                            <th>Этап</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                        </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="pendingUsersSection" style="display: none;">
+                    <h3>Управление сотрудниками</h3>
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Почта</th>
+                            <th>Дата регистрации</th>
+                            <th>Статус</th>
+                            <th>Роль</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="user : ${pendingUsers}">
+                            <td th:text="${user.email}"></td>
+
+                            <td th:text="${
+  #strings.substring(user.registrationDate, 3, 5) + '.' +
+  #strings.substring(user.registrationDate, 0, 2) + '.' +
+  #strings.substring(user.registrationDate, 6, 10)
+}"></td>
+                            <td class="approve-checkbox-container d-flex justify-content-center align-items-center">
+                                <input type="checkbox" class="approve-checkbox"
+                                       th:attr="data-user-id=${user.id}"
+                                       th:checked="${user.enabled}" />
+                            </td>
+                            <td>
+                                <select class="role-select" th:attr="data-user-id=${user.id}">
+                                    <option value="VIEW"  th:selected="${user.role.name() == 'VIEW'}">Аналитик</option>
+                                    <option value="USER"  th:selected="${user.role.name() == 'USER'}">Маркетолог</option>
+                                    <option value="ADMIN" th:selected="${user.role.name() == 'ADMIN'}">Админ</option>
+                                </select>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+
+
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createGroupModalLabel">Создать группу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createGroupForm">
+                    <div class="mb-3">
+                        <label for="groupName" class="form-label">Название группы:</label>
+                        <input type="text" class="form-control" id="groupName" name="groupName" required/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Файл CSV (Имя;Email):</label>
+                        <input type="file" class="form-control" id="file" name="file" required/>
+                    </div>
+                    <button type="submit" class="w-100 btn-success btn">Создать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="mailCredentialsModal" tabindex="-1" aria-labelledby="mailCredentialsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="mailCredentialsForm" action="/saveCredentials" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mailCredentialsModalLabel">Настройки почтового клиента</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" placeholder="example@gmail.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appPassword" class="form-label">Пароль</label>
+                        <input type="password" class="form-control" id="appPassword" name="appPassword" placeholder="Введите пароль" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appPassword" class="form-label">Хост</label>
+                        <input type="password" class="form-control" id="appPassword2" name="appPassword" placeholder="Введите host" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appPassword" class="form-label">Порт</label>
+                        <input type="password" class="form-control" id="appPassword3" name="appPassword" placeholder="Введите порт" required>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="submit" class="btn btn-success">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="sendMailModal" tabindex="-1" aria-labelledby="sendMailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sendMailModalLabel">Создать рассылку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sendMailForm">
+                    <div class="mb-3">
+                        <label for="group-name" class="form-label">Группа*</label>
+                        <input type="text" class="form-control" id="group-name" name="groupName" required/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="subject" class="form-label">Тема письма*</label>
+                        <input type="text" class="form-control" id="subject" name="subject" required/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Текст письма*</label>
+                        <textarea class="form-control" id="message" name="message" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sendDate" class="form-label">Дата отправки:</label>
+                        <input type="date" class="form-control" id="sendDate" name="sendDate"/>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sendTime" class="form-label">Время отправки:</label>
+                        <input type="time" class="form-control" id="sendTime" name="sendTime"/>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Отправить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createActionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createActionForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Новая запись</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Бизнес-процесс</label>
+                        <select class="form-select" id="actionBpSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Этап</label>
+                        <select class="form-select" id="actionStageSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Текст письма</label>
+                        <textarea class="form-control"
+                                  id="actionMailPreview"
+                                  rows="4"
+                                  readonly></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary w-100" type="submit">Отправить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createBpModal" tabindex="-1" aria-labelledby="createBpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createBpForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createBpModalLabel">Новый бизнес-процесс</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bpName" class="form-label">Название*</label>
+                        <input type="text" class="form-control" id="bpName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="bpDesc" class="form-label">Описание</label>
+                        <textarea class="form-control" id="bpDesc" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary w-100">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createStageModal" tabindex="-1" aria-labelledby="createStageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="createStageForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createStageModalLabel">Новый этап</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="stageName" class="form-label">Название этапа*</label>
+                        <input type="text" class="form-control" id="stageName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stageGroup" class="form-label">Группа рассылки*</label>
+                        <input type="text" class="form-control" id="stageGroup" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stageText" class="form-label">Текст письма*</label>
+                        <textarea class="form-control" id="stageText" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stagePriority" class="form-label">Приоритет (число)</label>
+                        <input type="number" class="form-control" id="stagePriority" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary w-100">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="Roboto-Regular-normal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<script>
+    function showToast(message, isError = false) {
+        const container = document.getElementById('toastPlacement');
+        const toastEl = document.createElement('div');
+        toastEl.classList.add('toast', 'align-items-center', 'text-bg-' + (isError ? 'danger' : 'success'));
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        container.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    const createGroupForm = document.getElementById('createGroupForm');
+    createGroupForm.addEventListener('submit', async function (evt) {
+        evt.preventDefault();
+        const formData = new FormData(createGroupForm);
+        try {
+            const response = await fetch('/groups/create', {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const text = await response.text();
+                showToast(text, false);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createGroupModal'));
+                modal.hide();
+            } else {
+                const text = await response.text();
+                showToast(text, true);
+            }
+        } catch (e) {
+            showToast("Ошибка: " + e.message, true);
+        }
+    });
+
+    const mailCredentialsForm = document.getElementById('mailCredentialsForm');
+
+    mailCredentialsForm.addEventListener('submit', async function (evt) {
+        evt.preventDefault();
+        const formData = new FormData(mailCredentialsForm);
+        try {
+            const response = await fetch('/saveCredentials', {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const text = await response.text();
+                showToast(text, false);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('mailCredentialsModal'));
+                modal.hide();
+            } else {
+                const text = await response.text();
+                showToast(text, true);
+            }
+        } catch (e) {
+            showToast("Ошибка: " + e.message, true);
+        }
+    });
+
+    const sendMailForm = document.getElementById('sendMailForm');
+    sendMailForm.addEventListener('submit', async function (evt) {
+        evt.preventDefault();
+        const formData = new FormData(sendMailForm);
+        const requestObject = Object.fromEntries(formData.entries());
+        try {
+            const response = await fetch('/sendmail', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestObject)
+            });
+            const text = await response.text();
+            if (response.ok) {
+                showToast(text, false);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('sendMailModal'));
+                modal.hide();
+            } else if (response.status === 403) {
+                showToast("У вас нет прав на отправку рассылки", true);
+            }
+            else {
+                showToast(text, true);
+            }
+        } catch (e) {
+            showToast("Ошибка: " + e.message, true);
+        }
+    });
+
+    document.getElementById('togglePendingUsers').addEventListener('click', () => {
+        const pendingSection = document.getElementById('pendingUsersSection');
+        const historySection = document.getElementById('mailHistorySection');
+        const bizprocSection = document.getElementById('bizprocSection');
+        const actionLogSection = document.getElementById('actionLogSection');
+        const sec = document.getElementById('groupsSection');
+        if (pendingSection.style.display === 'block') {
+            pendingSection.style.display = 'none';
+        } else {
+            historySection.style.display = 'none';
+            bizprocSection.style.display = 'none';
+            actionLogSection.style.display = 'none';
+            sec.style.display = 'none';
+            pendingSection.style.display = 'block';
+        }
+    });
+
+    document.getElementById('toggleMailing').addEventListener('click', async () => {
+        const historySection = document.getElementById('mailHistorySection');
+        const pendingSection = document.getElementById('pendingUsersSection');
+        const bizprocSection = document.getElementById('bizprocSection');
+        const actionLogSection = document.getElementById('actionLogSection');
+        const sec = document.getElementById('groupsSection');
+
+        if (historySection.style.display === 'block') {
+            historySection.style.display = 'none';
+        } else {
+            await loadHistory();
+            pendingSection.style.display = 'none';
+            bizprocSection.style.display = 'none';
+            actionLogSection.style.display = 'none';
+            sec.style.display = 'none';
+            historySection.style.display = 'block';
+        }
+    });
+
+    document.querySelectorAll('.approve-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            fetch('/admin/toggle-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    userId: userId,
+                    enabled: this.checked
+                })
+            }).then(response => {
+                if (response.ok) {
+                    showToast(this.checked ? 'Пользователь одобрен' : 'Пользователь деактивирован', false);
+                } else {
+                    this.checked = !this.checked;
+                    response.text().then(text => showToast(text, true));
+                }
+            }).catch(error => {
+                this.checked = !this.checked;
+                showToast("Ошибка: " + error.message, true);
+            });
+        });
+    });
+
+    document.querySelectorAll('.role-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const userId = this.getAttribute('data-user-id');
+            const newRole = this.value;  // "VIEW", "USER" или "ADMIN"
+
+            fetch('/admin/change-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    userId: userId,
+                    newRole: newRole
+                })
+            })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    } else {
+                        throw new Error("Ошибка изменения роли. Код " + response.status);
+                    }
+                })
+                .then(text => {
+                    showToast(text, false);
+                })
+                .catch(error => {
+                    showToast(error.message, true);
+                });
+        });
+    });
+
+    async function loadHistory() {
+        const historyBody = document.getElementById('historyBody');
+        historyBody.innerHTML = '';
+        try {
+            const resp = await fetch('/stats');
+            if (!resp.ok) {
+                showToast('Не удалось получить историю рассылок', true);
+                return;
+            }
+            const data = await resp.json();
+
+            data.forEach(m => {
+                const tr = document.createElement('tr');
+                const formattedDate = formatDateTime(m.sendDate);
+
+                tr.innerHTML = `
+                <td>${m.mailingId}</td>
+                <td>${m.subject}</td>
+                <td>${m.groupName}</td>
+                <td>${formattedDate}</td>
+                <td>${m.totalRecipients - m.failedRecipientsCount}/${m.totalRecipients}</td>
+                <td>
+                    <button class="btn btn-success btn-sm"
+                            onclick="getStats(${m.mailingId})">
+                        Скачать
+                    </button>
+                </td>
+            `;
+                historyBody.appendChild(tr);
+            });
+        } catch (e) {
+            showToast('Ошибка: ' + e.message, true);
+        }
+    }
+
+    function formatDateTime(isoString) {
+        const date = new Date(isoString);
+
+        return date.toLocaleDateString('ru-RU').replace(',', '');
+    }
+
+    async function getStats(mailingId) {
+        try {
+            const resp = await fetch(`/stats/${mailingId}`);
+            if (!resp.ok) {
+                console.error("Ошибка получения статистики");
+                return;
+            }
+            const m = await resp.json();
+
+            const deliveredCount = m.totalRecipients - m.failedRecipientsCount;
+            let content = "Статистика по рассылке\n";
+            content += `ID: ${m.mailingId}\n`;
+            content += `Тема: ${m.subject}\n`;
+            content += `Сообщение: ${m.message}\n`;
+            content += `Группа: ${m.groupName}\n`;
+            content += `Дата отправки: ${m.sendDate}\n`;
+            content += `Всего отправлено: ${m.totalRecipients}\n`;
+            content += "Список адресатов:\n";
+            m.recipients.forEach(r => {
+                let status = r.delivered ? "(OK)" : "(FAIL)";
+                content += `- ${r.email} ${status}\n`;
+            });
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mailing_${m.mailingId}.txt`;
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log("Файл успешно скачался!");
+        } catch (e) {
+            console.error("Ошибка:", e);
+        }
+    }
+
+    document.getElementById('toggleBizproc').addEventListener('click', async () => {
+        const bpSection = document.getElementById('bizprocSection');
+        const histSection = document.getElementById('mailHistorySection');
+        const pendSection = document.getElementById('pendingUsersSection');
+        const actionLogSection = document.getElementById('actionLogSection');
+        const sec = document.getElementById('groupsSection');
+        histSection.style.display = 'none';
+        pendSection.style.display = 'none';
+        actionLogSection.style.display = 'none';
+        sec.style.display = 'none';
+        if (bpSection.style.display === 'block') {
+            bpSection.style.display = 'none';
+        } else {
+            await loadBizprocs();
+            bpSection.style.display = 'block';
+        }
+    });
+
+    let currentBpId = null;
+    document.getElementById('addBizprocBtn')
+        .addEventListener('click', () =>
+            new bootstrap.Modal('#createBpModal').show());
+
+    document.getElementById('addStageBtn')
+        .addEventListener('click', () => {
+            if (!currentBpId) return showToast('Сначала выберите бизнес-процесс', true);
+            new bootstrap.Modal('#createStageModal').show();
+        });
+
+    document.getElementById('createBpForm')
+        .addEventListener('submit', async evt => {
+            evt.preventDefault();
+            const name = document.getElementById('bpName').value.trim();
+            const description = document.getElementById('bpDesc').value.trim();
+
+            try {
+                await fetch('/api/bizprocs', {
+                    method : 'POST',
+                    headers: { 'Content-Type':'application/json' },
+                    body   : JSON.stringify({ name, description })
+                });
+                showToast('Бизнес-процесс создан');
+                bootstrap.Modal.getInstance('#createBpModal').hide();
+                await loadBizprocs();
+            } catch (e) {
+                showToast('Ошибка создания БП: ' + e.message, true);
+            }
+        });
+
+    document.getElementById('createStageForm')
+        .addEventListener('submit', async evt => {
+            evt.preventDefault();
+            const dto = {
+                name      : document.getElementById('stageName').value.trim(),
+                groupName : document.getElementById('stageGroup').value.trim(),
+                mailText  : document.getElementById('stageText').value.trim(),
+                priority  : parseInt(document.getElementById('stagePriority').value || 0, 10)
+            };
+            try {
+                await fetch(`/api/bizprocs/${currentBpId}/stages`, {
+                    method : 'POST',
+                    headers: { 'Content-Type':'application/json' },
+                    body   : JSON.stringify(dto)
+                });
+                showToast('Этап добавлен');
+                bootstrap.Modal.getInstance('#createStageModal').hide();
+                await loadStages(currentBpId);      // актуализируем таблицу этапов
+            } catch (e) {
+                showToast('Ошибка создания этапа: ' + e.message, true);
+            }
+        });
+
+    async function loadBizprocs() {
+        const tbody = document.querySelector('#bizprocTable tbody');
+        tbody.innerHTML = '';
+        currentBpId = null;
+        document.querySelector('#stageTable tbody').innerHTML = '';
+
+        try {
+            const data = await (await fetch('/api/bizprocs')).json();
+            data.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `<td>${p.name}</td><td>${p.description ?? ''}</td>`;
+                tr.addEventListener('click', () => selectBp(p.id, tr));
+                tbody.appendChild(tr);
+            });
+        } catch(e) {
+            showToast('Не удалось загрузить БП: ' + e.message, true);
+        }
+    }
+
+    async function selectBp(bpId, trElement) {
+        currentBpId = bpId;
+        document.querySelectorAll('#bizprocTable tr').forEach(tr => tr.classList.remove('table-active'));
+        trElement.classList.add('table-active');
+        await loadStages(bpId);
+    }
+
+    async function loadStages(bpId) {
+        const tbody = document.querySelector('#stageTable tbody');
+        tbody.innerHTML = '';
+        if (!bpId) return;
+
+        try {
+            const resp = await fetch('/api/bizprocs');
+            const arr  = await resp.json();
+            const bp   = arr.find(b => b.id === bpId);
+            const stages = bp ? bp.stages : [];
+
+            stages.sort((a,b) => a.priority - b.priority);
+
+            stages.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td>${s.name}</td>
+        <td>${s.groupName}</td>
+        <td>${s.mailText}</td>
+        <td>${s.priority}</td>`;
+                tbody.appendChild(tr);
+            });
+        } catch(e) {
+            showToast('Не удалось загрузить этапы: ' + e.message, true);
+        }
+    }
+
+
+    document.getElementById('toggleActionLog')
+        .addEventListener('click', async () => {
+            ['bizprocSection','mailHistorySection','pendingUsersSection']
+                .forEach(id => document.getElementById(id).style.display='none');
+
+            const sec = document.getElementById('actionLogSection');
+            if (sec.style.display==='block') sec.style.display='none';
+            else {
+                await loadActionLog();
+                sec.style.display='block';
+            }
+        });
+
+    document.getElementById('addActionBtn')
+        .addEventListener('click', async () => {
+            await fillBpSelect();
+            new bootstrap.Modal('#createActionModal').show();
+        });
+
+    document.getElementById('actionBpSelect')
+        .addEventListener('change', () => fillStageSelect());
+
+    document.getElementById('createActionForm')
+        .addEventListener('submit', async evt => {
+            evt.preventDefault();
+            const bpId    = document.getElementById('actionBpSelect').value;
+            const stageId = document.getElementById('actionStageSelect').value;
+            try {
+                await fetch('/api/actions', {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body   : JSON.stringify({ bpId, stageId })
+                });
+                bootstrap.Modal.getInstance('#createActionModal').hide();
+                showToast('Письма отправлены, запись добавлена');
+                await loadActionLog();
+            } catch (e) {
+                showToast('Ошибка: ' + e.message, true);
+            }
+        });
+
+    let bpCache = [];
+
+    async function fillBpSelect() {
+        const sel = document.getElementById('actionBpSelect');
+        sel.innerHTML = '';
+        bpCache = await (await fetch('/api/bizprocs')).json();
+        bpCache.forEach(bp => sel.add(new Option(bp.name, bp.id)));
+        fillStageSelect();
+    }
+
+    function fillStageSelect() {
+        const bpId = document.getElementById('actionBpSelect').value;
+        const sel  = document.getElementById('actionStageSelect');
+        sel.innerHTML = '';
+        const bp = bpCache.find(b => b.id == bpId);
+        bp?.stages.forEach(st => sel.add(new Option(st.name, st.id)));
+    }
+
+    async function loadActionLog() {
+        const tbody = document.querySelector('#actionLogTable tbody');
+        tbody.innerHTML = '';
+        try {
+            const data = await (await fetch('/api/actions')).json();
+            data.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td>${r.bpName}</td>
+        <td>${r.stageName}</td>
+        <td>${r.dateTime}</td>
+        <td class="text-center">${r.success ? '✅' : '❌'}</td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            showToast('Не удалось загрузить журнал: ' + e.message, true);
+        }
+    }
+
+    async function loadGroups() {
+        const tbody = document.querySelector('#groupsTable tbody');
+        tbody.innerHTML = '';
+        try {
+            const resp = await fetch('/groups');       // новый эндпоинт
+            if (!resp.ok) { showToast('Не удалось получить группы', true); return; }
+            const data = await resp.json();            // [{groupName, contactsCount}]
+            data.forEach(g => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+  <td>${g.groupName}</td>
+  <td>${g.contactsCount}</td>
+  <td class="text-center">
+      <button class="btn btn-link p-0 delete-group"
+              data-name="${g.groupName}"
+              title="Удалить группу">
+          🗑️
+      </button>
+  </td>`;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { showToast('Ошибка: ' + e.message, true); }
+    }
+
+    document.getElementById('toggleGroups')
+        .addEventListener('click', async () => {
+
+            ['mailHistorySection','pendingUsersSection','actionLogSection','mailInfoSection']
+                .forEach(id => { const el = document.getElementById(id); if(el) el.style.display='none'; });
+
+            const sec = document.getElementById('groupsSection');
+            if (sec.style.display === 'block') sec.style.display = 'none';
+            else { await loadGroups(); sec.style.display = 'block'; }
+        });
+
+    function fillStageSelect() {
+        const bpId = document.getElementById('actionBpSelect').value;
+        const sel  = document.getElementById('actionStageSelect');
+        sel.innerHTML = '';
+
+        const bp = bpCache.find(b => b.id == bpId);
+        bp?.stages.forEach(st => sel.add(new Option(st.name, st.id)));
+
+        showStageMailText();
+    }
+
+    document.getElementById('actionStageSelect')
+        .addEventListener('change', showStageMailText);
+
+    function showStageMailText() {
+        const bpId    = document.getElementById('actionBpSelect').value;
+        const stageId = document.getElementById('actionStageSelect').value;
+        const preview = document.getElementById('actionMailPreview');
+
+        const bp = bpCache.find(b => b.id == bpId);
+        const st = bp?.stages.find(s => s.id == stageId);
+        preview.value = st ? st.mailText : '';
+    }
+
+    document.getElementById('groupsTable')
+        .addEventListener('click', async (e) => {
+            if (!e.target.classList.contains('delete-group')) return;
+
+            const name = e.target.dataset.name;
+            if (!confirm(`Удалить группу «${name}»?`)) return;
+
+            try {
+                const resp = await fetch(`/groups/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    showToast('Группа удалена');
+                    await loadGroups();
+                } else {
+                    const txt = await resp.text();
+                    showToast('Не удалось удалить: ' + txt, true);
+                }
+            } catch (err) {
+                showToast('Ошибка: ' + err.message, true);
+            }
+        });
+
+
+</script>
+</body>
+</html>
